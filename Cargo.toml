@@ -1,0 +1,13 @@
+[package]
+name = "merkle_tree"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = "0.1.89"
+axum = "0.8.6"
+hex = "0.4.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.95"
+sha2 = "0.10.9"
+tokio = { version = "1.37.0", features = ["full"] }   
