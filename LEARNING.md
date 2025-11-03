@@ -10,7 +10,9 @@ It is a binary tree built from bottom up approach. Where all the non-leaf nodes 
 - All the data fields become the leaf node & construction is based on the below formulae
 - Where A is left node and B is right Node then parent Node = Hash AB
 
-_Hash AB = Hash(Hash A || Hash B)_
+_Hash AB = Hash(Hash A || Hash B)_ 
+
+if Odd data : _Hash C = Hash(Hash C || Hash C)_
 
 ## Merkle Tree Verfication
 
