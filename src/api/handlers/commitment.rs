@@ -38,8 +38,7 @@ pub async fn get_root(
     let commitment_count = state.storage.commitment_count().await?;
 
     Ok(Json(RootResponse {
-        root: hex::encode(&root_bytes),
-        root_bytes,
+        root: root_bytes,
         commitment_count,
     }))
 }

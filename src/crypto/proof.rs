@@ -60,51 +60,41 @@ impl MerkleProof {
 }
 
 /// Generate a Merkle proof for a specific index
-pub fn generate_proof(tree_root: &MerkleNode, target_index: usize, total_leaves: usize) -> Vec<ProofElement> {
-    let mut proof = Vec::new();
+pub fn generate_proof(tree: &MerkleNode, target_index: usize, total_leaves: usize) -> Vec<ProofElement> {
+    fn helper(node: &MerkleNode, idx: usize, begin: usize, leaves_count: usize) -> Vec<ProofElement> {
+        if node.left.is_none() && node.right.is_none() {
+            // Leaf node, end of proof path
+            return Vec::new();
+        }
+        // Figure out the size of the left subtree
+        let left_count = (leaves_count + 1) / 2;
+        let right_count = leaves_count - left_count;
+        let right_begin = begin + left_count;
 
-    // Each stack entry: (node, start_index, end_index)
-    let mut current_node = tree_root;
-    let mut from = 0;
-    let mut to = total_leaves - 1;
-    let index = target_index;
-
-    while !current_node.is_leaf() {
-        let num_leaves = to - from + 1;
-        let mid = from + (num_leaves - 1) / 2;
-        // Determine if we step left or right at this layer
-        if index <= mid {
-            // Sibling is on the right
-            let sibling = if let Some(ref right) = current_node.right {
-                right
-            } else {
-                // Odd node: sibling is a duplicate of left
-                current_node.left.as_ref().expect("Should have left child")
-            };
+        // Depending on which subtree target is in, recurse accordingly
+        if idx < begin + left_count {
+            // Target is in left subtree
+            let left = node.left.as_ref().unwrap();
+            let right = node.right.as_ref().unwrap_or(left); // duplicate left if missing
+            let mut proof = helper(left, idx, begin, left_count);
             proof.push(ProofElement {
-                hash: sibling.hash.clone(),
+                hash: right.hash.clone(),
                 is_left: false,
             });
-            // Move down to left child
-            current_node = current_node.left.as_ref().expect("Should have left child");
-            to = mid;
+            proof
         } else {
-            // Sibling is on the left
-            let sibling = if let Some(ref left) = current_node.left {
-                left
-            } else {
-                current_node.right.as_ref().expect("Should have right child")
-            };
+            // Target is in right subtree
+            let left = node.left.as_ref().unwrap();
+            let right = node.right.as_ref().unwrap_or(left); // duplicate left if missing (should never happen here, but for symmetry)
+            let mut proof = helper(right, idx, right_begin, right_count);
             proof.push(ProofElement {
-                hash: sibling.hash.clone(),
+                hash: left.hash.clone(),
                 is_left: true,
             });
-            // Move down to right child
-            current_node = current_node.right.as_ref().expect("Should have right child");
-            from = mid + 1;
+            proof
         }
     }
-    proof
+    helper(tree, target_index, 0, total_leaves)
 }
 
 
@@ -158,5 +148,40 @@ mod tests {
         );
 
         assert!(!proof.verify());
+    }
+
+    #[test]
+    fn test_proof_three_odd_commitments_all_indices() {
+        let leaves = vec![
+            MerkleNode::new_leaf(b"aaa"),
+            MerkleNode::new_leaf(b"bbb"),
+            MerkleNode::new_leaf(b"ccc"),
+        ];
+        let tree = MerkleTree::from_leaves(leaves.clone());
+        let root = tree.root().unwrap();
+        // Generate/verify for index 0
+        let proof0 = MerkleProof::new(
+            0,
+            b"aaa".to_vec(),
+            generate_proof(root, 0, 3),
+            root.hash.clone(),
+        );
+        assert!(proof0.verify());
+        // Generate/verify for index 1
+        let proof1 = MerkleProof::new(
+            1,
+            b"bbb".to_vec(),
+            generate_proof(root, 1, 3),
+            root.hash.clone(),
+        );
+        assert!(proof1.verify());
+        // Generate/verify for index 2
+        let proof2 = MerkleProof::new(
+            2,
+            b"ccc".to_vec(),
+            generate_proof(root, 2, 3),
+            root.hash.clone(),
+        );
+        assert!(proof2.verify());
     }
 }
